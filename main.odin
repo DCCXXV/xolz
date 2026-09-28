@@ -59,7 +59,7 @@ CANVAS_Y :: (SCREEN_H - CANVAS_H) / 2
 WINDOW_W :: SCREEN_W * SCALE
 WINDOW_H :: SCREEN_H * SCALE
 
-highscore_path :: proc() -> string {
+data_path :: proc(name: string) -> string {
 	dir: string
 	when ODIN_OS == .Windows {
 		dir = os.get_env("APPDATA", context.temp_allocator)
@@ -72,20 +72,21 @@ highscore_path :: proc() -> string {
 	}
 	dir, _ = os.join_path({dir, "xolz"}, context.temp_allocator)
 	os.make_directory_all(dir)
-	path, _ := os.join_path({dir, "highscore"}, context.temp_allocator)
+	path, _ := os.join_path({dir, name}, context.temp_allocator)
 	return path
 }
 
-load_highscore :: proc() -> int {
-	data, err := os.read_entire_file(highscore_path(), context.temp_allocator)
-	if err != nil do return 0
-	n, _ := strconv.parse_int(string(data))
+load_int :: proc(name: string, default: int) -> int {
+	data, err := os.read_entire_file(data_path(name), context.temp_allocator)
+	if err != nil do return default
+	n, ok := strconv.parse_int(string(data))
+	if !ok do return default
 	return n
 }
 
-save_highscore :: proc(n: int) {
+save_int :: proc(name: string, n: int) {
 	buf: [32]u8
-	_ = os.write_entire_file(highscore_path(), strconv.write_int(buf[:], i64(n), 10))
+	_ = os.write_entire_file(data_path(name), strconv.write_int(buf[:], i64(n), 10))
 }
 
 draw_pattern :: proc(px, py: int, pattern: Pattern, color: rl.Color, size: int = 1) {
@@ -138,7 +139,6 @@ main :: proc() {
 	rl.InitAudioDevice()
 	rl.SetWindowMinSize(SCREEN_W, SCREEN_H)
 	rl.SetTargetFPS(60)
-	rl.SetMasterVolume(0.8)
 	rl.SetExitKey(.KEY_NULL)
 
 	place_wave := rl.LoadWaveFromMemory(".wav", raw_data(PLACE_WAV), i32(len(PLACE_WAV)))
@@ -153,6 +153,7 @@ main :: proc() {
 	game_over_sfx = rl.LoadSoundFromWave(game_over_wave)
 
 	load_font()
+	set_volume(load_int("volume", VOLUME_DEFAULT), save = false)
 
 	canvas := rl.LoadRenderTexture(CANVAS_W, CANVAS_H)
 	rl.SetTextureFilter(canvas.texture, .POINT)
@@ -162,7 +163,7 @@ main :: proc() {
 	canvas_src := rl.Rectangle{0, 0, CANVAS_W, -CANVAS_H}
 	screen_src := rl.Rectangle{0, 0, SCREEN_W, -SCREEN_H}
 
-	highscore = load_highscore()
+	highscore = load_int("highscore", 0)
 	for !rl.WindowShouldClose() {
 		screen_w, screen_h := rl.GetScreenWidth(), rl.GetScreenHeight()
 		scale := max(1, min(screen_w / SCREEN_W, screen_h / SCREEN_H))
@@ -183,9 +184,8 @@ main :: proc() {
 			draw_menu()
 			rl.EndTextureMode()
 		} else if scene == .Settings {
-			rl.BeginTextureMode(screen)
-			rl.ClearBackground(rl.BLACK)
-			rl.EndTextureMode()
+			update_settings(mouse)
+			draw_settings(screen)
 		} else {
 			/*
 			if rl.IsMouseButtonPressed(.LEFT) {

@@ -211,19 +211,13 @@ update :: proc(dt: f32) {
 	if game_over {
 		if current_score > highscore {
 			highscore = current_score
-			save_highscore(highscore)
+			save_int("highscore", highscore)
 		}
 		if rl.GetKeyPressed() != .KEY_NULL do clear_board()
 		return
 	}
 
-	if rl.IsKeyPressed(.M) {
-		if rl.GetMasterVolume() == 0 {
-			rl.SetMasterVolume(0.8)
-		} else {
-			rl.SetMasterVolume(0)
-		}
-	}
+	if rl.IsKeyPressed(.M) do toggle_mute()
 
 	/*
 	if rl.IsKeyPressed(.P) {
