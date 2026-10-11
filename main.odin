@@ -1,7 +1,5 @@
-package main
+package game
 
-import "core:os"
-import "core:strconv"
 import rl "vendor:raylib"
 
 SCALE :: 10
@@ -59,35 +57,10 @@ CANVAS_Y :: (SCREEN_H - CANVAS_H) / 2
 WINDOW_W :: SCREEN_W * SCALE
 WINDOW_H :: SCREEN_H * SCALE
 
-data_path :: proc(name: string) -> string {
-	dir: string
-	when ODIN_OS == .Windows {
-		dir = os.get_env("APPDATA", context.temp_allocator)
-	} else {
-		dir = os.get_env("XDG_DATA_HOME", context.temp_allocator)
-		if dir == "" {
-			home := os.get_env("HOME", context.temp_allocator)
-			dir, _ = os.join_path({home, ".local", "share"}, context.temp_allocator)
-		}
-	}
-	dir, _ = os.join_path({dir, "xolz"}, context.temp_allocator)
-	os.make_directory_all(dir)
-	path, _ := os.join_path({dir, name}, context.temp_allocator)
-	return path
-}
-
-load_int :: proc(name: string, default: int) -> int {
-	data, err := os.read_entire_file(data_path(name), context.temp_allocator)
-	if err != nil do return default
-	n, ok := strconv.parse_int(string(data))
-	if !ok do return default
-	return n
-}
-
-save_int :: proc(name: string, n: int) {
-	buf: [32]u8
-	_ = os.write_entire_file(data_path(name), strconv.write_int(buf[:], i64(n), 10))
-}
+canvas, screen: rl.RenderTexture2D
+place_wave, break_wave, game_over_wave: rl.Wave
+canvas_src := rl.Rectangle{0, 0, CANVAS_W, -CANVAS_H}
+screen_src := rl.Rectangle{0, 0, SCREEN_W, -SCREEN_H}
 
 draw_pattern :: proc(px, py: int, pattern: Pattern, color: rl.Color, size: int = 1) {
 	for y in 0 ..< GLYPH_SIZE * size {
@@ -133,7 +106,7 @@ draw_next_preview :: proc() {
 	if (next_piece_glyph != .Empty) do draw_pattern(NEXT_PREVIEW_X, NEXT_PREVIEW_Y, PATTERNS[next_piece_glyph], COLORS[next_piece_glyph], 3)
 }
 
-main :: proc() {
+init :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE})
 	rl.InitWindow(WINDOW_W, WINDOW_H, "XOLZ")
 	rl.InitAudioDevice()
@@ -141,11 +114,11 @@ main :: proc() {
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(.KEY_NULL)
 
-	place_wave := rl.LoadWaveFromMemory(".wav", raw_data(PLACE_WAV), i32(len(PLACE_WAV)))
+	place_wave = rl.LoadWaveFromMemory(".wav", raw_data(PLACE_WAV), i32(len(PLACE_WAV)))
 	place_sfx = rl.LoadSoundFromWave(place_wave)
-	break_wave := rl.LoadWaveFromMemory(".wav", raw_data(BREAK_WAV), i32(len(BREAK_WAV)))
+	break_wave = rl.LoadWaveFromMemory(".wav", raw_data(BREAK_WAV), i32(len(BREAK_WAV)))
 	break_sfx = rl.LoadSoundFromWave(break_wave)
-	game_over_wave := rl.LoadWaveFromMemory(
+	game_over_wave = rl.LoadWaveFromMemory(
 		".wav",
 		raw_data(GAME_OVER_WAV),
 		i32(len(GAME_OVER_WAV)),
@@ -155,63 +128,66 @@ main :: proc() {
 	load_font()
 	set_volume(load_int("volume", VOLUME_DEFAULT), save = false)
 
-	canvas := rl.LoadRenderTexture(CANVAS_W, CANVAS_H)
+	canvas = rl.LoadRenderTexture(CANVAS_W, CANVAS_H)
 	rl.SetTextureFilter(canvas.texture, .POINT)
-	screen := rl.LoadRenderTexture(SCREEN_W, SCREEN_H)
+	screen = rl.LoadRenderTexture(SCREEN_W, SCREEN_H)
 	rl.SetTextureFilter(screen.texture, .POINT)
 
-	canvas_src := rl.Rectangle{0, 0, CANVAS_W, -CANVAS_H}
-	screen_src := rl.Rectangle{0, 0, SCREEN_W, -SCREEN_H}
-
 	highscore = load_int("highscore", 0)
-	for !rl.WindowShouldClose() {
-		screen_w, screen_h := rl.GetScreenWidth(), rl.GetScreenHeight()
-		scale := max(1, min(screen_w / SCREEN_W, screen_h / SCREEN_H))
-		dst := rl.Rectangle {
-			f32((screen_w - SCREEN_W * scale) / 2),
-			f32((screen_h - SCREEN_H * scale) / 2),
-			f32(SCREEN_W * scale),
-			f32(SCREEN_H * scale),
-		}
-		mouse := (rl.GetMousePosition() - {dst.x, dst.y}) / f32(scale)
+}
 
-		if scene != .Menu && rl.IsKeyPressed(.ESCAPE) do scene = .Menu
+update :: proc() {
+	screen_w, screen_h := rl.GetScreenWidth(), rl.GetScreenHeight()
+	scale := max(1, min(screen_w / SCREEN_W, screen_h / SCREEN_H))
+	dst := rl.Rectangle {
+		f32((screen_w - SCREEN_W * scale) / 2),
+		f32((screen_h - SCREEN_H * scale) / 2),
+		f32(SCREEN_W * scale),
+		f32(SCREEN_H * scale),
+	}
+	mouse := (rl.GetMousePosition() - {dst.x, dst.y}) / f32(scale)
 
-		if scene == .Menu {
-			update_menu(mouse)
-			rl.BeginTextureMode(screen)
-			rl.ClearBackground(rl.BLACK)
-			draw_menu()
-			rl.EndTextureMode()
-		} else if scene == .Settings {
-			update_settings(mouse)
-			draw_settings(screen)
-		} else {
-			/*
-			if rl.IsMouseButtonPressed(.LEFT) {
-				mx := (int(mouse.x) - CANVAS_X - INSET) / PITCH
-				my := (int(mouse.y) - CANVAS_Y - INSET) / PITCH
-				if mx >= 0 && mx < COLS && my >= 0 && my < ROWS {
-					g := board[my][mx]
-					board[my][mx] = Glyph((int(g) + 1) % len(Glyph))
-				}
-			}
-			*/
+	if scene != .Menu && rl.IsKeyPressed(.ESCAPE) do scene = .Menu
 
-			update(rl.GetFrameTime())
-			draw_game(canvas)
-			rl.BeginTextureMode(screen)
-			rl.ClearBackground(rl.BLACK)
-			rl.DrawTextureRec(canvas.texture, canvas_src, {CANVAS_X, CANVAS_Y}, rl.WHITE)
-			rl.EndTextureMode()
-		}
-
-		rl.BeginDrawing()
+	if scene == .Menu {
+		update_menu(mouse)
+		rl.BeginTextureMode(screen)
 		rl.ClearBackground(rl.BLACK)
-		rl.DrawTexturePro(screen.texture, screen_src, dst, {0, 0}, 0, rl.WHITE)
-		rl.EndDrawing()
+		draw_menu()
+		rl.EndTextureMode()
+	} else if scene == .Settings {
+		update_settings(mouse)
+		draw_settings(screen)
+	} else {
+		/*
+		if rl.IsMouseButtonPressed(.LEFT) {
+			mx := (int(mouse.x) - CANVAS_X - INSET) / PITCH
+			my := (int(mouse.y) - CANVAS_Y - INSET) / PITCH
+			if mx >= 0 && mx < COLS && my >= 0 && my < ROWS {
+				g := board[my][mx]
+				board[my][mx] = Glyph((int(g) + 1) % len(Glyph))
+			}
+		}
+		*/
+
+		update_game(rl.GetFrameTime())
+		draw_game(canvas)
+		rl.BeginTextureMode(screen)
+		rl.ClearBackground(rl.BLACK)
+		rl.DrawTextureRec(canvas.texture, canvas_src, {CANVAS_X, CANVAS_Y}, rl.WHITE)
+		rl.EndTextureMode()
 	}
 
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.BLACK)
+	rl.DrawTexturePro(screen.texture, screen_src, dst, {0, 0}, 0, rl.WHITE)
+	rl.EndDrawing()
+
+	// Anything allocated using temp allocator is invalid after this.
+	free_all(context.temp_allocator)
+}
+
+shutdown :: proc() {
 	rl.UnloadWave(place_wave)
 	rl.UnloadWave(break_wave)
 	rl.UnloadWave(game_over_wave)

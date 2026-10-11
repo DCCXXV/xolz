@@ -1,4 +1,4 @@
-package main
+package game
 
 import "core:math/rand"
 import rl "vendor:raylib"
@@ -207,7 +207,7 @@ lock_piece :: proc() {
 
 paused: bool
 
-update :: proc(dt: f32) {
+update_game :: proc(dt: f32) {
 	if game_over {
 		if current_score > highscore {
 			highscore = current_score

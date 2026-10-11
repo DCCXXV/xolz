@@ -10,7 +10,7 @@ jobs:
         with:
           release: latest
           token: ${{ secrets.GITHUB_TOKEN }}
-      - run: odin build . -out:xolz.exe -o:speed -subsystem:windows
+      - run: odin build main_desktop -out:xolz.exe -o:speed -subsystem:windows
       - uses: actions/upload-artifact@v7
         with:
           name: xolz-windows
