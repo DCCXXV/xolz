@@ -114,16 +114,18 @@ draw_menu :: proc() {
 	draw_logo(LOGO_X, LOGO_Y)
 
 	for item in Menu_Item {
-		rect := button_rect(item)
-		fg, bg := rl.WHITE, rl.BLACK
-		if item == menu_selected do fg, bg = bg, fg
-
-		rl.DrawRectangleRec(rect, bg)
-		rl.DrawRectangleLinesEx(rect, BORDER, rl.WHITE)
-
-		label := MENU_LABELS[item]
-		x := int(rect.x) + (int(rect.width) - text_width(label)) / 2
-		y := int(rect.y) + (BUTTON_H - FONT_CAP_H) / 2 - FONT_CAP_TOP
-		rl.DrawTextEx(font, label, {f32(x), f32(y)}, FONT_SIZE, FONT_SPACING, fg)
+		draw_button(button_rect(item), MENU_LABELS[item], item == menu_selected)
 	}
+}
+
+draw_button :: proc(rect: rl.Rectangle, label: cstring, inverted: bool) {
+	fg, bg := rl.WHITE, rl.BLACK
+	if inverted do fg, bg = bg, fg
+
+	rl.DrawRectangleRec(rect, bg)
+	rl.DrawRectangleLinesEx(rect, BORDER, rl.WHITE)
+
+	x := int(rect.x) + (int(rect.width) - text_width(label)) / 2
+	y := int(rect.y) + (BUTTON_H - FONT_CAP_H) / 2 - FONT_CAP_TOP
+	rl.DrawTextEx(font, label, {f32(x), f32(y)}, FONT_SIZE, FONT_SPACING, fg)
 }

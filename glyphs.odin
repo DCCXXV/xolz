@@ -10,6 +10,8 @@ Glyph :: enum {
 	BigO,
 	Plus,
 	House,
+	Bow,
+	BigI,
 }
 
 Pattern :: [3][3]bool
@@ -51,6 +53,18 @@ PATTERNS := [Glyph]Pattern {
 		"x o x",
 		"x x x",
 	}),
+
+	.Bow = parse_pattern({
+		"x o x",
+		"x o o",
+		"o x x",
+	}),
+
+	.BigI = parse_pattern({
+		"x x x",
+		"o x o",
+		"x x x",
+	}),
 }
 // odinfmt: enable
 
@@ -60,6 +74,8 @@ COLORS := [Glyph]rl.Color {
 	.BigO  = {0, 0, 255, 255},
 	.Plus  = {0, 255, 0, 255},
 	.House = {255, 255, 0, 255},
+	.Bow   = {255, 128, 0, 255},
+	.BigI  = {255, 0, 255, 255},
 }
 
 // odinfmt: disable

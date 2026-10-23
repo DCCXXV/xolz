@@ -14,9 +14,14 @@ func main() {
 		dir = os.Args[1]
 	}
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	r := chi.NewRouter()
 	r.Handle("/*", http.FileServer(http.Dir(dir)))
 
-	log.Println("serving", dir, "on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Println("serving", dir, "on :"+port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

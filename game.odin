@@ -21,6 +21,20 @@ game_over: bool
 current_score: int
 highscore: int
 
+DEFAULT_GLYPHS :: [4]Glyph{.Cross, .BigO, .Plus, .House}
+active_glyphs := DEFAULT_GLYPHS
+
+pick_glyphs :: proc() {
+	if !extra_glyphs {
+		active_glyphs = DEFAULT_GLYPHS
+		return
+	}
+	all: [len(Glyph) - 1]Glyph
+	for &g, i in all do g = Glyph(i + 1)
+	rand.shuffle(all[:])
+	copy(active_glyphs[:], all[:])
+}
+
 clear_board :: proc() {
 	for row in 0 ..< ROWS {
 		for col in 0 ..< COLS {
@@ -29,6 +43,8 @@ clear_board :: proc() {
 	}
 	game_over = false
 	current_score = 0
+	pick_glyphs()
+	next_piece_glyph = .Empty
 	spawn_piece()
 }
 
@@ -109,7 +125,7 @@ resolve :: proc() {
 	combo := 1
 	cleared := false
 	for _ in 0 ..< 16 {
-		scan({.Cross, .BigO, .Plus, .House})
+		scan(active_glyphs[:])
 		if match_count == 0 do break
 		combo *= score_matches()
 		cleared = true
@@ -120,7 +136,7 @@ resolve :: proc() {
 }
 
 random_glyph :: proc() -> Glyph {
-	return Glyph(1 + rand.int_max(len(Glyph) - 1))
+	return rand.choice(active_glyphs[:])
 }
 
 piece_col: int

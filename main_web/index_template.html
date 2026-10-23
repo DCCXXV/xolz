@@ -31,6 +31,12 @@
 				requestAnimationFrame(tick);
 			},
 		};
+
+		const unlockAudio = () => {
+			window.miniaudio?.unlock();
+			document.removeEventListener("keydown", unlockAudio, true);
+		};
+		document.addEventListener("keydown", unlockAudio, true);
 	</script>
 	{{{ SCRIPT }}}
 </body>

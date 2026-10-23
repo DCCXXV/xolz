@@ -127,6 +127,7 @@ init :: proc() {
 
 	load_font()
 	set_volume(load_int("volume", VOLUME_DEFAULT), save = false)
+	extra_glyphs = load_int("extra_glyphs", 0) != 0
 
 	canvas = rl.LoadRenderTexture(CANVAS_W, CANVAS_H)
 	rl.SetTextureFilter(canvas.texture, .POINT)
@@ -183,7 +184,6 @@ update :: proc() {
 	rl.DrawTexturePro(screen.texture, screen_src, dst, {0, 0}, 0, rl.WHITE)
 	rl.EndDrawing()
 
-	// Anything allocated using temp allocator is invalid after this.
 	free_all(context.temp_allocator)
 }
 
