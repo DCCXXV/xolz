@@ -12,6 +12,12 @@ Glyph :: enum {
 	House,
 	Bow,
 	BigI,
+	Diamond,
+	BigY,
+	Arch,
+	Meteor,
+	Boom,
+	Six,
 }
 
 Pattern :: [3][3]bool
@@ -65,6 +71,43 @@ PATTERNS := [Glyph]Pattern {
 		"o x o",
 		"x x x",
 	}),
+
+	.Diamond = parse_pattern({
+		"o x x",
+		"x o x",
+		"x x o",
+	}),
+	
+	.BigY = parse_pattern({
+		"x o x",
+		"x x x",
+		"o x o",
+	}),
+
+	.Arch = parse_pattern({
+		"x x x",
+		"x o x",
+		"x o x",
+	}),
+
+	.Meteor = parse_pattern({
+		"x o o",
+		"o x x",
+		"o x x",
+	}),
+
+	.Boom = parse_pattern({
+		"x o x",
+		"o x o",
+		"x x x",
+	}),
+	
+	.Six = parse_pattern({
+		"x o x",
+		"x o x",
+		"x o x",
+	}),
+
 }
 // odinfmt: enable
 
@@ -76,6 +119,12 @@ COLORS := [Glyph]rl.Color {
 	.House = {255, 255, 0, 255},
 	.Bow   = {255, 128, 0, 255},
 	.BigI  = {255, 0, 255, 255},
+	.Diamond = {128, 255, 0, 255},
+	.BigY = {0, 255, 255, 255},
+	.Arch = {128, 0, 255, 255},
+	.Meteor = {0, 255, 128, 255},
+	.Boom = {0, 128, 255, 255},
+	.Six = {255, 0, 128, 255}
 }
 
 // odinfmt: disable
