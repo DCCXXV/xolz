@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import "core:math/rand"
 import rl "vendor:raylib"
 
@@ -21,18 +22,12 @@ game_over: bool
 current_score: int
 highscore: int
 
-DEFAULT_GLYPHS :: [4]Glyph{.Cross, .BigO, .Plus, .House}
-active_glyphs := DEFAULT_GLYPHS
+Glyph_Set :: bit_set[Glyph;u16]
+DEFAULT_GLYPHS :: Glyph_Set{.Cross, .BigO, .Plus, .House}
+enabled_glyphs := DEFAULT_GLYPHS
 
-pick_glyphs :: proc() {
-	if !extra_glyphs {
-		active_glyphs = DEFAULT_GLYPHS
-		return
-	}
-	all: [len(Glyph) - 1]Glyph
-	for &g, i in all do g = Glyph(i + 1)
-	rand.shuffle(all[:])
-	copy(active_glyphs[:], all[:])
+highscore_key :: proc() -> string {
+	return fmt.tprintf("highscore_%x", transmute(u16)enabled_glyphs)
 }
 
 clear_board :: proc() {
@@ -43,7 +38,7 @@ clear_board :: proc() {
 	}
 	game_over = false
 	current_score = 0
-	pick_glyphs()
+	highscore = load_int(highscore_key(), 0)
 	next_piece_glyph = .Empty
 	spawn_piece()
 }
@@ -61,7 +56,7 @@ matches :: proc(row, col: int, g: Glyph) -> bool {
 	return true
 }
 
-scan :: proc(active: []Glyph) {
+scan :: proc(active: Glyph_Set) {
 	for row in 0 ..= ROWS - 3 {
 		for col in 0 ..= COLS - 3 {
 			for g in active {
@@ -125,7 +120,7 @@ resolve :: proc() {
 	combo := 1
 	cleared := false
 	for _ in 0 ..< 16 {
-		scan(active_glyphs[:])
+		scan(enabled_glyphs)
 		if match_count == 0 do break
 		combo *= score_matches()
 		cleared = true
@@ -136,7 +131,8 @@ resolve :: proc() {
 }
 
 random_glyph :: proc() -> Glyph {
-	return rand.choice(active_glyphs[:])
+	chosen, _ := rand.choice_bit_set(enabled_glyphs)
+	return chosen
 }
 
 piece_col: int
@@ -227,7 +223,7 @@ update_game :: proc(dt: f32) {
 	if game_over {
 		if current_score > highscore {
 			highscore = current_score
-			save_int("highscore", highscore)
+			save_int(highscore_key(), highscore)
 		}
 		if rl.GetKeyPressed() != .KEY_NULL do clear_board()
 		return

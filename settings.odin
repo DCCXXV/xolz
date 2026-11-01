@@ -9,21 +9,19 @@ unmuted_volume := VOLUME_DEFAULT
 
 Settings_Item :: enum {
 	Volume,
-	Extra_Glyphs,
+	Glyphs,
 }
 
 settings_selected: Settings_Item
-extra_glyphs: bool
 
 VOLUME_LABEL :: "VOLUME"
-EXTRA_GLYPHS_LABEL :: "EXTRA GLYPHS"
+GLYPHS_LABEL :: "GLYPHS"
 SETTINGS_LABEL_GAP :: 4
 SETTINGS_ITEM_GAP :: 6
 
 CHECKBOX_INNER :: 5
 CHECKBOX_SIZE :: CHECKBOX_INNER + BORDER * 2
 CHECKBOX_PAD :: BORDER + (CHECKBOX_INNER - GLYPH_SIZE) / 2
-CHECKBOX_GAP :: 3
 
 BACK_HINT :: "PRESS ESC TO GO BACK"
 BACK_HINT_MARGIN :: 3
@@ -32,15 +30,32 @@ VOLUME_ROW_W :: (VOLUME_LEVELS - 1) * PITCH + GLYPH_SIZE
 VOLUME_BOX_W :: VOLUME_ROW_W + INSET * 2
 VOLUME_BOX_H :: GLYPH_SIZE + INSET * 2
 
-SETTINGS_H :: FONT_CAP_H + SETTINGS_LABEL_GAP + VOLUME_BOX_H + SETTINGS_ITEM_GAP + CHECKBOX_SIZE
-VOLUME_LABEL_Y :: (SCREEN_H - SETTINGS_H) / 2
+SETTINGS_H ::
+	FONT_CAP_H +
+	SETTINGS_LABEL_GAP +
+	VOLUME_BOX_H +
+	SETTINGS_ITEM_GAP +
+	FONT_CAP_H +
+	SETTINGS_LABEL_GAP +
+	GLYPH_GRID_H
+VOLUME_LABEL_Y :: (BACK_HINT_Y - SETTINGS_H) / 2
 VOLUME_BOX_X :: (SCREEN_W - VOLUME_BOX_W) / 2
 VOLUME_BOX_Y :: VOLUME_LABEL_Y + FONT_CAP_H + SETTINGS_LABEL_GAP
 VOLUME_ROW_X :: VOLUME_BOX_X + INSET
 VOLUME_ROW_Y :: VOLUME_BOX_Y + INSET
 
-EXTRA_GLYPHS_Y :: VOLUME_BOX_Y + VOLUME_BOX_H + SETTINGS_ITEM_GAP
-EXTRA_GLYPHS_LABEL_Y :: EXTRA_GLYPHS_Y + (CHECKBOX_SIZE - FONT_CAP_H) / 2
+GLYPHS_LABEL_Y :: VOLUME_BOX_Y + VOLUME_BOX_H + SETTINGS_ITEM_GAP
+GLYPH_GRID_X :: (SCREEN_W - GLYPH_GRID_W) / 2
+GLYPH_GRID_Y :: GLYPHS_LABEL_Y + FONT_CAP_H + SETTINGS_LABEL_GAP
+
+GLYPH_COUNT :: len(Glyph) - 1
+GLYPH_GRID_COLS :: 6
+GLYPH_GRID_ROWS :: GLYPH_COUNT / GLYPH_GRID_COLS
+GLYPH_GRID_PITCH :: CHECKBOX_SIZE - BORDER
+GLYPH_GRID_W :: GLYPH_GRID_COLS * GLYPH_GRID_PITCH + BORDER
+GLYPH_GRID_H :: GLYPH_GRID_ROWS * GLYPH_GRID_PITCH + BORDER
+
+glyph_cursor: int
 
 set_volume :: proc(level: int, save := true) {
 	volume = clamp(level, 0, VOLUME_LEVELS)
@@ -62,19 +77,23 @@ toggle_mute :: proc() {
 	}
 }
 
-toggle_extra_glyphs :: proc() {
-	extra_glyphs = !extra_glyphs
-	save_int("extra_glyphs", int(extra_glyphs))
+toggle_glyph :: proc(g: Glyph) {
+	if g in enabled_glyphs {
+		if card(enabled_glyphs) == 1 do return
+
+		enabled_glyphs -= {g}
+	} else {
+		enabled_glyphs += {g}
+	}
+
+	play_toggle_sound(g in enabled_glyphs)
+	save_int("glyphs", int(transmute(u16)enabled_glyphs))
 }
 
-extra_glyphs_rect :: proc() -> rl.Rectangle {
-	w := text_width(EXTRA_GLYPHS_LABEL) + CHECKBOX_GAP + CHECKBOX_SIZE
-	return {f32((SCREEN_W - w) / 2), EXTRA_GLYPHS_Y, f32(w), CHECKBOX_SIZE}
-}
-
-draw_checkbox :: proc(x, y: int, checked: bool) {
-	rl.DrawRectangleLinesEx({f32(x), f32(y), CHECKBOX_SIZE, CHECKBOX_SIZE}, BORDER, rl.WHITE)
-	if checked do draw_pattern(x + CHECKBOX_PAD, y + CHECKBOX_PAD, PATTERNS[.Cross], rl.WHITE)
+glyph_rect :: proc(i: int) -> rl.Rectangle {
+	x := GLYPH_GRID_X + i % GLYPH_GRID_COLS * GLYPH_GRID_PITCH
+	y := GLYPH_GRID_Y + i / GLYPH_GRID_COLS * GLYPH_GRID_PITCH
+	return {f32(x), f32(y), CHECKBOX_SIZE, CHECKBOX_SIZE}
 }
 
 volume_dice_rect :: proc(i: int) -> rl.Rectangle {
@@ -97,9 +116,11 @@ update_settings :: proc(mouse: rl.Vector2) {
 	case .Volume:
 		if left && volume > 0 do change_volume(volume - 1)
 		if right && volume < VOLUME_LEVELS do change_volume(volume + 1)
-	case .Extra_Glyphs:
-		if left || right || rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE) {
-			toggle_extra_glyphs()
+	case .Glyphs:
+		if left do glyph_cursor = (glyph_cursor + GLYPH_COUNT - 1) % GLYPH_COUNT
+		if right do glyph_cursor = (glyph_cursor + 1) % GLYPH_COUNT
+		if rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE) {
+			toggle_glyph(Glyph(glyph_cursor + 1))
 		}
 	}
 
@@ -111,9 +132,11 @@ update_settings :: proc(mouse: rl.Vector2) {
 			if level == 1 && volume == 1 do level = 0
 			change_volume(level)
 		}
-		if rl.CheckCollisionPointRec(mouse, extra_glyphs_rect()) {
-			settings_selected = .Extra_Glyphs
-			toggle_extra_glyphs()
+		for i in 0 ..< GLYPH_COUNT {
+			if !rl.CheckCollisionPointRec(mouse, glyph_rect(i)) do continue
+			settings_selected = .Glyphs
+			glyph_cursor = i
+			toggle_glyph(Glyph(i + 1))
 		}
 	}
 }
@@ -129,18 +152,25 @@ draw_settings :: proc(target: rl.RenderTexture2D) {
 	draw_text_centered(VOLUME_LABEL, VOLUME_LABEL_Y, settings_label_color(.Volume))
 
 	box := rl.Rectangle{VOLUME_BOX_X, VOLUME_BOX_Y, VOLUME_BOX_W, VOLUME_BOX_H}
-	rl.DrawRectangleLinesEx(box, BORDER, rl.WHITE)
+	rl.DrawRectangleLinesEx(box, BORDER, settings_label_color(.Volume))
 
 	for i in 0 ..< VOLUME_LEVELS {
 		color := rl.WHITE if i < volume else rl.DARKGRAY
 		draw_pattern(VOLUME_ROW_X + i * PITCH, VOLUME_ROW_Y, DICE_DIGITS[i], color)
 	}
 
-	row := extra_glyphs_rect()
-	label_pos := rl.Vector2{row.x, f32(EXTRA_GLYPHS_LABEL_Y - FONT_CAP_TOP)}
-	color := settings_label_color(.Extra_Glyphs)
-	rl.DrawTextEx(font, EXTRA_GLYPHS_LABEL, label_pos, FONT_SIZE, FONT_SPACING, color)
-	draw_checkbox(int(row.x + row.width) - CHECKBOX_SIZE, EXTRA_GLYPHS_Y, extra_glyphs)
+	draw_text_centered(GLYPHS_LABEL, GLYPHS_LABEL_Y, settings_label_color(.Glyphs))
+
+	for i in 0 ..< GLYPH_COUNT {
+		g := Glyph(i + 1)
+		r := glyph_rect(i)
+		rl.DrawRectangleLinesEx(r, BORDER, rl.GRAY)
+		color := COLORS[g] if g in enabled_glyphs else rl.DARKGRAY
+		draw_pattern(int(r.x) + CHECKBOX_PAD, int(r.y) + CHECKBOX_PAD, PATTERNS[g], color)
+	}
+	if settings_selected == .Glyphs {
+		rl.DrawRectangleLinesEx(glyph_rect(glyph_cursor), BORDER, rl.WHITE)
+	}
 
 	draw_text_centered(BACK_HINT, BACK_HINT_Y, rl.GRAY)
 

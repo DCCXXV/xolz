@@ -11,6 +11,13 @@ COLUMN_NOTES := [COLS]f32{0, 2, 4, 7, 9, 12, 14, 16, 19}
 play_place_sound :: proc(col: int) {
 	pitch := math.pow(2, COLUMN_NOTES[col] / 12)
 	rl.SetSoundPitch(place_sfx, pitch)
+	rl.SetSoundVolume(place_sfx, 1)
+	rl.PlaySound(place_sfx)
+}
+
+play_toggle_sound :: proc(on: bool) {
+	rl.SetSoundPitch(place_sfx, 2 if on else 0.7)
+	rl.SetSoundVolume(place_sfx, 1 if on else 0.4)
 	rl.PlaySound(place_sfx)
 }
 

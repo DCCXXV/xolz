@@ -127,14 +127,16 @@ init :: proc() {
 
 	load_font()
 	set_volume(load_int("volume", VOLUME_DEFAULT), save = false)
-	extra_glyphs = load_int("extra_glyphs", 0) != 0
 
 	canvas = rl.LoadRenderTexture(CANVAS_W, CANVAS_H)
 	rl.SetTextureFilter(canvas.texture, .POINT)
 	screen = rl.LoadRenderTexture(SCREEN_W, SCREEN_H)
 	rl.SetTextureFilter(screen.texture, .POINT)
 
-	highscore = load_int("highscore", 0)
+	enabled_glyphs = transmute(Glyph_Set)u16(load_int("glyphs", int(transmute(u16)DEFAULT_GLYPHS)))
+	if card(enabled_glyphs) == 0 do enabled_glyphs = DEFAULT_GLYPHS
+
+	highscore = load_int(highscore_key(), 0)
 }
 
 update :: proc() {
