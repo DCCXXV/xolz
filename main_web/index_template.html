@@ -2,10 +2,11 @@
 <html>
 <head>
 	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>XOLZ</title>
 </head>
-<body style="margin:0;background:#000;display:grid;place-items:center;height:100vh">
-	<canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<body style="margin:0;background:#000;overflow:hidden">
+	<canvas id="canvas" style="display:block;touch-action:none" oncontextmenu="event.preventDefault()"></canvas>
 	<script src="odin.js"></script>
 	<script>
 		const mem = new odin.WasmMemoryInterface();
@@ -27,6 +28,7 @@
 				const e = wasmExports;
 				e._start();
 				e.main_start();
+				window.dispatchEvent(new Event("resize"));
 				const tick = () => { e.main_update(); requestAnimationFrame(tick); };
 				requestAnimationFrame(tick);
 			},
@@ -35,8 +37,10 @@
 		const unlockAudio = () => {
 			window.miniaudio?.unlock();
 			document.removeEventListener("keydown", unlockAudio, true);
+			document.removeEventListener("touchend", unlockAudio, true);
 		};
 		document.addEventListener("keydown", unlockAudio, true);
+		document.addEventListener("touchend", unlockAudio, true);
 	</script>
 	{{{ SCRIPT }}}
 </body>

@@ -6,6 +6,8 @@ A **not**-so-tetris-like video game where you have to place the pieces in the sh
 
 ![gameplay screenshot 2](screenshots/game2.png)
 
+![gameplay screenshot 3](screenshots/game3.png)
+
 ![menu screenshot](screenshots/menu.png)
 
 ![settings screenshot](screenshots/settings.png)

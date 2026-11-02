@@ -219,13 +219,13 @@ lock_piece :: proc() {
 
 paused: bool
 
-update_game :: proc(dt: f32) {
+update_game :: proc(dt: f32, mouse: rl.Vector2) {
 	if game_over {
 		if current_score > highscore {
 			highscore = current_score
 			save_int(highscore_key(), highscore)
 		}
-		if rl.GetKeyPressed() != .KEY_NULL do clear_board()
+		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) do clear_board()
 		return
 	}
 
@@ -258,6 +258,15 @@ update_game :: proc(dt: f32) {
 		if piece_row + 1 < ROWS && board[piece_row + 1][piece_col] == .Empty {
 			piece_row += 1
 			fall_timer = 0
+		}
+	}
+
+	tap_x := int(mouse.x) - CANVAS_X - INSET
+	if rl.IsMouseButtonPressed(.LEFT) && tap_x >= 0 && tap_x < COLS * PITCH {
+		col := tap_x / PITCH
+		if board[piece_row][col] == .Empty {
+			piece_col = col
+			hard_drop()
 		}
 	}
 

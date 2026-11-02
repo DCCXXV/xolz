@@ -1,5 +1,6 @@
 package game
 
+import "core:math/rand"
 import rl "vendor:raylib"
 
 Scene :: enum {
@@ -27,11 +28,14 @@ BUTTON_H :: (BORDER + BUTTON_PAD) * 2 + FONT_CAP_H
 BUTTON_GAP :: 3
 BUTTONS_H :: len(Menu_Item) * BUTTON_H + (len(Menu_Item) - 1) * BUTTON_GAP
 
-LOGO_GLYPHS := [2][2]Glyph{{.Cross, .House}, {.Plus, .BigO}}
+LOGO_GRID :: 7
+logo_glyphs: [LOGO_GRID][LOGO_GRID]Glyph
+logo_shape: Glyph
+logo_shape_x, logo_shape_y: int
 
-LOGO_GLYPH_SIZE :: (GLYPH_SIZE - 1) * PITCH + GLYPH_SIZE
-LOGO_GAP :: 3
-LOGO_SIZE :: len(LOGO_GLYPHS) * LOGO_GLYPH_SIZE + (len(LOGO_GLYPHS) - 1) * LOGO_GAP
+LOGO_GRID_SIZE :: (LOGO_GRID - 1) * PITCH + GLYPH_SIZE
+LOGO_PAD :: INSET + GAP
+LOGO_SIZE :: LOGO_GRID_SIZE + LOGO_PAD * 2
 LOGO_BUTTONS_GAP :: 5
 
 MENU_H :: LOGO_SIZE + LOGO_BUTTONS_GAP + BUTTONS_H
@@ -39,17 +43,33 @@ LOGO_X :: (SCREEN_W - LOGO_SIZE) / 2
 LOGO_Y :: (SCREEN_H - MENU_H) / 2
 BUTTONS_Y :: LOGO_Y + LOGO_SIZE + LOGO_BUTTONS_GAP
 
+randomize_logo :: proc() {
+	for &row in logo_glyphs {
+		for &g in row do g = Glyph(rand.int_max(GLYPH_COUNT) + 1)
+	}
+	logo_shape, _ = rand.choice_bit_set(enabled_glyphs)
+	logo_shape_x = rand.int_max(LOGO_GRID - GLYPH_SIZE + 1)
+	logo_shape_y = rand.int_max(LOGO_GRID - GLYPH_SIZE + 1)
+	for cy in 0 ..< GLYPH_SIZE {
+		for cx in 0 ..< GLYPH_SIZE {
+			if !in_logo_shape(logo_shape_x + cx, logo_shape_y + cy) do continue
+			logo_glyphs[logo_shape_y + cy][logo_shape_x + cx] = logo_shape
+		}
+	}
+}
+
+in_logo_shape :: proc(x, y: int) -> bool {
+	cx, cy := x - logo_shape_x, y - logo_shape_y
+	if cx < 0 || cy < 0 || cx >= GLYPH_SIZE || cy >= GLYPH_SIZE do return false
+	return PATTERNS[logo_shape][cy][cx]
+}
+
 draw_logo :: proc(px, py: int) {
-	for row, y in LOGO_GLYPHS {
+	rl.DrawRectangleLinesEx({f32(px), f32(py), LOGO_SIZE, LOGO_SIZE}, BORDER, rl.WHITE)
+	for row, y in logo_glyphs {
 		for g, x in row {
-			gx := px + x * (LOGO_GLYPH_SIZE + LOGO_GAP)
-			gy := py + y * (LOGO_GLYPH_SIZE + LOGO_GAP)
-			for cy in 0 ..< GLYPH_SIZE {
-				for cx in 0 ..< GLYPH_SIZE {
-					if !PATTERNS[g][cy][cx] do continue
-					draw_pattern(gx + cx * PITCH, gy + cy * PITCH, PATTERNS[g], COLORS[g])
-				}
-			}
+			color := COLORS[g] if in_logo_shape(x, y) else rl.DARKGRAY
+			draw_pattern(px + LOGO_PAD + x * PITCH, py + LOGO_PAD + y * PITCH, PATTERNS[g], color)
 		}
 	}
 }

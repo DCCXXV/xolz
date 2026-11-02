@@ -137,6 +137,7 @@ init :: proc() {
 	if card(enabled_glyphs) == 0 do enabled_glyphs = DEFAULT_GLYPHS
 
 	highscore = load_int(highscore_key(), 0)
+	randomize_logo()
 }
 
 update :: proc() {
@@ -150,7 +151,15 @@ update :: proc() {
 	}
 	mouse := (rl.GetMousePosition() - {dst.x, dst.y}) / f32(scale)
 
-	if scene != .Menu && rl.IsKeyPressed(.ESCAPE) do scene = .Menu
+	back_hint := rl.Rectangle{0, BACK_HINT_Y - 2, SCREEN_W, FONT_CAP_H + 4}
+	tapped_back :=
+		scene == .Settings &&
+		rl.IsMouseButtonPressed(.LEFT) &&
+		rl.CheckCollisionPointRec(mouse, back_hint)
+	if scene != .Menu && (rl.IsKeyPressed(.ESCAPE) || tapped_back) {
+		scene = .Menu
+		randomize_logo()
+	}
 
 	if scene == .Menu {
 		update_menu(mouse)
@@ -173,7 +182,7 @@ update :: proc() {
 		}
 		*/
 
-		update_game(rl.GetFrameTime())
+		update_game(rl.GetFrameTime(), mouse)
 		draw_game(canvas)
 		rl.BeginTextureMode(screen)
 		rl.ClearBackground(rl.BLACK)
