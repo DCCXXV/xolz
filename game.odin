@@ -27,7 +27,8 @@ DEFAULT_GLYPHS :: Glyph_Set{.Cross, .BigO, .Plus, .House}
 enabled_glyphs := DEFAULT_GLYPHS
 
 highscore_key :: proc() -> string {
-	return fmt.tprintf("highscore_%x", transmute(u16)enabled_glyphs)
+	@(static) buf: [32]u8
+	return fmt.bprintf(buf[:], "highscore_%x", transmute(u16)enabled_glyphs)
 }
 
 clear_board :: proc() {
